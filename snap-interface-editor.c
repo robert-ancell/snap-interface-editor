@@ -62,8 +62,25 @@ get_core_slot (GPtrArray *slots, SnapdPlug *plug)
 
         core_slot = slot;
     }
-  
+
     return core_slot;
+}
+
+static gboolean
+is_connected (SnapdPlug *plug, SnapdSlot *slot)
+{
+    GPtrArray *connections;
+    guint i;
+
+    connections = snapd_plug_get_connections (plug);
+    for (i = 0; i < connections->len; i++) {
+        SnapdConnection *c = g_ptr_array_index (connections, i);
+        if (g_strcmp0 (snapd_connection_get_snap (c), snapd_slot_get_snap (slot)) == 0 &&
+            g_strcmp0 (snapd_slot_get_name (slot), snapd_connection_get_name (c)) == 0)
+            return TRUE;
+    }
+
+    return FALSE;
 }
 
 static void
@@ -81,7 +98,6 @@ snap_changed_cb (GtkWidget *combo)
         SnapdSlot *core_slot;
         const gchar *plug_label;
         GtkWidget *label;
-        guint j;
 
         if (g_strcmp0 (snapd_plug_get_snap (plug), snap) != 0)
             continue;
@@ -108,12 +124,15 @@ snap_changed_cb (GtkWidget *combo)
         }
         else {
             GtkWidget *combo;
+            guint j;
+            gint i, selected = -1;
 
             combo = gtk_combo_box_text_new ();
             gtk_widget_show (combo);
             gtk_grid_attach (GTK_GRID (grid), combo, 1, row, 1, 1);
 
-            for (j = 0; j < slots->len; j++) {
+            gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), "(disconnected)");
+            for (j = 0, i = 0; j < slots->len; j++) {
                 SnapdSlot *slot = g_ptr_array_index (slots, j);
                 const gchar *slot_label;
                 g_autofree gchar *label = NULL;
@@ -126,8 +145,11 @@ snap_changed_cb (GtkWidget *combo)
                     slot_label = snapd_plug_get_name (plug);
                 label = g_strdup_printf ("%s:%s", snapd_slot_get_snap (slot), slot_label);
                 gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), label);
+                if (is_connected (plug, slot))
+                    selected = i;
+                i++;
             }
-            gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), "(disconnected)");
+            gtk_combo_box_set_active (GTK_COMBO_BOX (combo), selected + 1);
         }
 
         row++;
