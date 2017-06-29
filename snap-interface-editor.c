@@ -1,5 +1,18 @@
+/*
+ * Copyright (C) 2017 Canonical Ltd.
+ * Author: Robert Ancell <robert.ancell@canonical.com>
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU General Public License as published by the Free Software
+ * Foundation, either version 3 of the License, or (at your option) any later
+ * version. See http://www.gnu.org/copyleft/gpl.html the full text of the
+ * license.
+ */
+
 #include <gtk/gtk.h>
 #include <snapd-glib/snapd-glib.h>
+
+#include "snap-interface-switch.h"
 
 static SnapdClient *client = NULL;
 static GPtrArray *slots = NULL;
@@ -83,6 +96,25 @@ is_connected (SnapdPlug *plug, SnapdSlot *slot)
     return FALSE;
 }
 
+/*static void
+switch_activate_cb (GtkSwitch *sw)
+{
+    g_autoptr(GError) error = NULL;
+
+    if (gtk_switch_get_active (sw)))
+        snapd_client_disconnect_interface_sync (client,
+                                                ., .,
+                                                "core", .,
+                                                NULL, NULL,
+                                                NULL, &error);
+    else
+        snapd_client_connect_interface_sync (client,
+                                             ., .,
+                                             "core", .,
+                                             NULL, NULL,
+                                             NULL, &error);
+}*/
+
 static void
 snap_changed_cb (GtkWidget *combo)
 {
@@ -113,14 +145,14 @@ snap_changed_cb (GtkWidget *combo)
 
         core_slot = get_core_slot (slots, plug);
         if (core_slot != NULL) {
-            GtkWidget *s;
+            GtkWidget *sw;
             GPtrArray *connections;
 
-            s = gtk_switch_new ();
             connections = snapd_plug_get_connections (plug);
-            gtk_switch_set_active (GTK_SWITCH (s), connections->len);
-            gtk_widget_show (s);
-            gtk_grid_attach (GTK_GRID (grid), s, 1, row, 1, 1);
+            sw = snap_interface_switch_new (plug, core_slot, connections->len > 0);
+            gtk_widget_show (sw);
+            gtk_grid_attach (GTK_GRID (grid), sw, 1, row, 1, 1);
+            //g_signal_connect (sw, "notify::active", G_CALLBACK (switch_activate_cb), NULL);
         }
         else {
             GtkWidget *combo;
@@ -217,7 +249,7 @@ main (int argc, char **argv)
 
     grid = gtk_grid_new ();
     gtk_grid_set_row_spacing (GTK_GRID (grid), 10);
-    gtk_grid_set_column_spacing (GTK_GRID (grid), 10);  
+    gtk_grid_set_column_spacing (GTK_GRID (grid), 10);
     gtk_widget_show (grid);
     gtk_box_pack_start (GTK_BOX (box), grid, TRUE, TRUE, 0);
 

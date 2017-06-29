@@ -15,6 +15,8 @@ gtk_dep = dependency ('gtk+-3.0', version: '>=3.12')
 snapd_glib_dep = dependency ('snapd-glib')
 
 snap_interface_editor = executable ('snap-interface-editor',
-                                    [ 'snap-interface-editor.c' ],
+                                    [ 'snap-interface-editor.c',
+                                      'snap-interface-switch.c',
+                                      'snap-interface-switch.h' ],
                                     dependencies: [ glib_dep, gtk_dep, snapd_glib_dep ],
                                     install: true)
