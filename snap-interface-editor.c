@@ -97,25 +97,6 @@ is_connected (SnapdPlug *plug, SnapdSlot *slot)
     return FALSE;
 }
 
-/*static void
-switch_activate_cb (GtkSwitch *sw)
-{
-    g_autoptr(GError) error = NULL;
-
-    if (gtk_switch_get_active (sw)))
-        snapd_client_disconnect_interface_sync (client,
-                                                ., .,
-                                                "core", .,
-                                                NULL, NULL,
-                                                NULL, &error);
-    else
-        snapd_client_connect_interface_sync (client,
-                                             ., .,
-                                             "core", .,
-                                             NULL, NULL,
-                                             NULL, &error);
-}*/
-
 static void
 snap_changed_cb (GtkWidget *combo)
 {
@@ -153,7 +134,6 @@ snap_changed_cb (GtkWidget *combo)
             sw = snap_interface_switch_new (plug, core_slot, connections->len > 0);
             gtk_widget_show (GTK_WIDGET (sw));
             gtk_grid_attach (GTK_GRID (grid), GTK_WIDGET (sw), 1, row, 1, 1);
-            //g_signal_connect (sw, "notify::active", G_CALLBACK (switch_activate_cb), NULL);
         }
         else {
             SnapInterfaceComboBox *combo;

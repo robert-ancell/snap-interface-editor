@@ -22,6 +22,19 @@ struct _SnapInterfaceSwitch
 G_DEFINE_TYPE (SnapInterfaceSwitch, snap_interface_switch, GTK_TYPE_SWITCH)
 
 static void
+active_changed_cb (SnapInterfaceSwitch *sw)
+{
+    if (gtk_switch_get_active (GTK_SWITCH (sw)))
+        g_printerr ("connect %s:%s - %s:%s\n",
+                    snapd_plug_get_snap (sw->plug), snapd_plug_get_name (sw->plug),
+                    snapd_slot_get_snap (sw->slot), snapd_slot_get_name (sw->slot));
+    else
+        g_printerr ("disconnect %s:%s - %s:%s\n",
+                    snapd_plug_get_snap (sw->plug), snapd_plug_get_name (sw->plug),
+                    snapd_slot_get_snap (sw->slot), snapd_slot_get_name (sw->slot));
+}
+
+static void
 snap_interface_switch_dispose (GObject *object)
 {
     SnapInterfaceSwitch *sw = SNAP_INTERFACE_SWITCH (object);
@@ -54,6 +67,7 @@ snap_interface_switch_new (SnapdPlug *plug, SnapdSlot *slot, gboolean connected)
     sw->plug = g_object_ref (plug);
     sw->slot = g_object_ref (slot);
     gtk_switch_set_active (GTK_SWITCH (sw), connected);
+    g_signal_connect (sw, "notify::active", G_CALLBACK (active_changed_cb), NULL);
 
     return sw;
 }
