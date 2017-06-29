@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 #include <snapd-glib/snapd-glib.h>
 
+#include "snap-interface-combo-box.h"
 #include "snap-interface-switch.h"
 
 static SnapdClient *client = NULL;
@@ -145,43 +146,36 @@ snap_changed_cb (GtkWidget *combo)
 
         core_slot = get_core_slot (slots, plug);
         if (core_slot != NULL) {
-            GtkWidget *sw;
+            SnapInterfaceSwitch *sw;
             GPtrArray *connections;
 
             connections = snapd_plug_get_connections (plug);
             sw = snap_interface_switch_new (plug, core_slot, connections->len > 0);
-            gtk_widget_show (sw);
-            gtk_grid_attach (GTK_GRID (grid), sw, 1, row, 1, 1);
+            gtk_widget_show (GTK_WIDGET (sw));
+            gtk_grid_attach (GTK_GRID (grid), GTK_WIDGET (sw), 1, row, 1, 1);
             //g_signal_connect (sw, "notify::active", G_CALLBACK (switch_activate_cb), NULL);
         }
         else {
-            GtkWidget *combo;
+            SnapInterfaceComboBox *combo;
             guint j;
-            gint i, selected = -1;
+            g_autoptr(GPtrArray) available_slots = NULL;
+            SnapdSlot *connected_slot = NULL;
 
-            combo = gtk_combo_box_text_new ();
-            gtk_widget_show (combo);
-            gtk_grid_attach (GTK_GRID (grid), combo, 1, row, 1, 1);
-
-            gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), "(disconnected)");
-            for (j = 0, i = 0; j < slots->len; j++) {
+            available_slots = g_ptr_array_new_with_free_func (g_object_unref);
+            for (j = 0; j < slots->len; j++) {
                 SnapdSlot *slot = g_ptr_array_index (slots, j);
-                const gchar *slot_label;
-                g_autofree gchar *label = NULL;
 
                 if (g_strcmp0 (snapd_plug_get_interface (plug), snapd_slot_get_interface (slot)) != 0)
                     continue;
 
-                slot_label = snapd_plug_get_label (plug);
-                if (slot_label == NULL || g_strcmp0 (slot_label, "") == 0)
-                    slot_label = snapd_plug_get_name (plug);
-                label = g_strdup_printf ("%s:%s", snapd_slot_get_snap (slot), slot_label);
-                gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), label);
+                g_ptr_array_add (available_slots, g_object_ref (slot));
                 if (is_connected (plug, slot))
-                    selected = i;
-                i++;
+                    connected_slot = slot;
             }
-            gtk_combo_box_set_active (GTK_COMBO_BOX (combo), selected + 1);
+
+            combo = snap_interface_combo_box_new (plug, available_slots, connected_slot);
+            gtk_widget_show (GTK_WIDGET (combo));
+            gtk_grid_attach (GTK_GRID (grid), GTK_WIDGET (combo), 1, row, 1, 1);
         }
 
         row++;
