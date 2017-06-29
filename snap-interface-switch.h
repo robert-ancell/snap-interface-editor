@@ -9,8 +9,8 @@
  * license.
  */
 
-#ifndef __INTERFACE_SWITCH_H
-#define __INTERFACE_SWITCH_H
+#ifndef __SNAP_INTERFACE_SWITCH_H
+#define __SNAP_INTERFACE_SWITCH_H
 
 #include <gtk/gtk.h>
 #include <snapd-glib/snapd-glib.h>
@@ -25,4 +25,4 @@ SnapInterfaceSwitch *snap_interface_switch_new (SnapdPlug *plug, SnapdSlot *slot
 
 G_END_DECLS
 
-#endif /* __INTERFACE_SWITCH_H */
+#endif /* __SNAP_INTERFACE_SWITCH_H */
