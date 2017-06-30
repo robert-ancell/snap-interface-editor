@@ -28,6 +28,9 @@ snap_interface_combo_box_set_connected_slot (SnapInterfaceComboBox *combo, Snapd
     GtkTreeModel *model;
     GtkTreeIter iter;
 
+    g_return_if_fail (SNAP_IS_INTERFACE_COMBO_BOX (combo));
+    g_return_if_fail (connected_slot != NULL && SNAPD_IS_SLOT (connected_slot));  
+
     g_clear_object (&combo->connected_slot);
     combo->connected_slot = g_object_ref (connected_slot);
 
