@@ -35,6 +35,12 @@ snap_index (GPtrArray *snaps, const gchar *value)
     return -1;
 }
 
+static gint
+compare_snap_names (gchar **a, gchar **b)
+{
+    return g_strcmp0 (*a, *b);
+}
+
 static GPtrArray *
 get_snaps (GPtrArray *plugs, GPtrArray *slots)
 {
@@ -52,7 +58,7 @@ get_snaps (GPtrArray *plugs, GPtrArray *slots)
         if (snap_index (snaps, snapd_plug_get_snap (plug)) == -1)
             g_ptr_array_add (snaps, g_strdup (snapd_plug_get_snap (plug)));
     }
-    g_ptr_array_sort (snaps, (GCompareFunc) g_strcmp0);
+    g_ptr_array_sort (snaps, (GCompareFunc) compare_snap_names);
 
     return snaps;
 }
