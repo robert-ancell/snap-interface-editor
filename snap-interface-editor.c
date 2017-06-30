@@ -48,11 +48,6 @@ get_snaps (GPtrArray *plugs, GPtrArray *slots)
     guint i;
 
     snaps = g_ptr_array_new_with_free_func (g_free);
-    for (i = 0; i < slots->len; i++) {
-        SnapdSlot *slot = g_ptr_array_index (slots, i);
-        if (snap_index (snaps, snapd_slot_get_snap (slot)) == -1)
-            g_ptr_array_add (snaps, g_strdup (snapd_slot_get_snap (slot)));
-    }
     for (i = 0; i < plugs->len; i++) {
         SnapdPlug *plug = g_ptr_array_index (plugs, i);
         if (snap_index (snaps, snapd_plug_get_snap (plug)) == -1)
