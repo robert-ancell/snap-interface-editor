@@ -22,6 +22,35 @@ struct _SnapInterfaceComboBox
 
 G_DEFINE_TYPE (SnapInterfaceComboBox, snap_interface_combo_box, GTK_TYPE_COMBO_BOX)
 
+void
+snap_interface_combo_box_set_connected_slot (SnapInterfaceComboBox *combo, SnapdSlot *connected_slot)
+{
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+
+    g_clear_object (&combo->connected_slot);
+    combo->connected_slot = g_object_ref (connected_slot);
+
+    model = gtk_combo_box_get_model (GTK_COMBO_BOX (combo));
+    if (gtk_tree_model_get_iter_first (model, &iter)) {
+        do {
+            SnapdSlot *slot;
+            gtk_tree_model_get (gtk_combo_box_get_model (GTK_COMBO_BOX (combo)), &iter, 1, &slot, -1);
+            if (slot == connected_slot) {
+                gtk_combo_box_set_active_iter (GTK_COMBO_BOX (combo), &iter);
+                break;
+            }
+        } while (gtk_tree_model_iter_next (model, &iter));
+    }
+}
+
+SnapdSlot *
+snap_interface_combo_box_get_connected_slot (SnapInterfaceComboBox *combo)
+{
+    g_return_val_if_fail (SNAP_IS_INTERFACE_COMBO_BOX (combo), NULL);
+    return combo->connected_slot;
+}
+
 static void
 changed_cb (SnapInterfaceComboBox *combo)
 {
@@ -30,6 +59,9 @@ changed_cb (SnapInterfaceComboBox *combo)
 
     if (gtk_combo_box_get_active_iter (GTK_COMBO_BOX (combo), &iter))
         gtk_tree_model_get (gtk_combo_box_get_model (GTK_COMBO_BOX (combo)), &iter, 1, &slot, -1);
+
+    if (slot == combo->connected_slot)
+        return;
 
     if (slot != NULL) {
         g_printerr ("connect %s:%s - %s:%s\n",
@@ -72,7 +104,7 @@ snap_interface_combo_box_init (SnapInterfaceComboBox *combo)
 }
 
 SnapInterfaceComboBox *
-snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots, SnapdSlot *connected_slot)
+snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots)
 {
     SnapInterfaceComboBox *combo;
     GtkListStore *store;
@@ -83,7 +115,6 @@ snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots, SnapdSlot *conn
     combo = g_object_new (SNAP_TYPE_INTERFACE_COMBO_BOX, NULL);
     combo->plug = g_object_ref (plug);
     combo->slots = g_ptr_array_ref (slots);
-    combo->connected_slot = g_object_ref (connected_slot);
 
     store = gtk_list_store_new (2, G_TYPE_STRING, SNAPD_TYPE_SLOT);
     gtk_combo_box_set_model (GTK_COMBO_BOX (combo), GTK_TREE_MODEL (store));
@@ -94,8 +125,6 @@ snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots, SnapdSlot *conn
 
     gtk_list_store_append (store, &iter);
     gtk_list_store_set (store, &iter, 0, "(disconnected)", 1, NULL, -1);
-    if (connected_slot == NULL)
-        gtk_combo_box_set_active_iter (GTK_COMBO_BOX (combo), &iter);
     for (i = 0; i < slots->len; i++) {
         SnapdSlot *slot = g_ptr_array_index (slots, i);
         const gchar *slot_label;
@@ -108,8 +137,6 @@ snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots, SnapdSlot *conn
 
         gtk_list_store_append (store, &iter);
         gtk_list_store_set (store, &iter, 0, label, 1, slot, -1);
-        if (connected_slot == slot)
-            gtk_combo_box_set_active_iter (GTK_COMBO_BOX (combo), &iter);
     }
 
     g_signal_connect (combo, "changed", G_CALLBACK (changed_cb), NULL);

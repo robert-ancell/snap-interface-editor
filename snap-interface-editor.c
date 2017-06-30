@@ -159,7 +159,8 @@ snap_changed_cb (GtkWidget *combo)
                     connected_slot = slot;
             }
 
-            combo = snap_interface_combo_box_new (plug, available_slots, connected_slot);
+            combo = snap_interface_combo_box_new (plug, available_slots);
+            snap_interface_combo_box_set_connected_slot (combo, connected_slot);
             gtk_widget_show (GTK_WIDGET (combo));
             gtk_grid_attach (GTK_GRID (grid), GTK_WIDGET (combo), 1, row, 1, 1);
         }

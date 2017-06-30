@@ -21,7 +21,14 @@ G_BEGIN_DECLS
 
 G_DECLARE_FINAL_TYPE (SnapInterfaceComboBox, snap_interface_combo_box, SNAP, INTERFACE_COMBO_BOX, GtkComboBox)
 
-SnapInterfaceComboBox *snap_interface_combo_box_new (SnapdPlug *plug, GPtrArray *slots, SnapdSlot *connected_slot);
+SnapInterfaceComboBox *snap_interface_combo_box_new                (SnapdPlug             *plug,
+                                                                    GPtrArray             *slots);
+
+void                   snap_interface_combo_box_set_connected_slot (SnapInterfaceComboBox *combo,
+                                                                    SnapdSlot             *connected_slot);
+
+SnapdSlot             *snap_interface_combo_box_get_connected_slot (SnapInterfaceComboBox *combo);
+
 
 G_END_DECLS
 
