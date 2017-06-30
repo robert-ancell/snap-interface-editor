@@ -12,6 +12,7 @@
 #include <gtk/gtk.h>
 #include <snapd-glib/snapd-glib.h>
 
+#include "snap-combo-box.h"
 #include "snap-interface-combo-box.h"
 #include "snap-interface-switch.h"
 
@@ -21,14 +22,28 @@ static GPtrArray *plugs = NULL;
 
 static GtkWidget *grid = NULL;
 
+static SnapdSnap *
+find_snap (GPtrArray *snaps, const gchar *name)
+{
+    guint i;
+
+    for (i = 0; i < snaps->len; i++) {
+        SnapdSnap *snap = g_ptr_array_index (snaps, i);
+        if (g_strcmp0 (snapd_snap_get_name (snap), name) == 0)
+            return snap;
+    }
+
+    return NULL;
+}
+
 static gint
-snap_index (GPtrArray *snaps, const gchar *value)
+snap_index (GPtrArray *snaps, SnapdSnap *snap)
 {
     gint i;
 
     for (i = 0; i < snaps->len; i++) {
-        const gchar *snap = g_ptr_array_index (snaps, i);
-        if (g_strcmp0 (snap, value) == 0)
+        SnapdSnap *s = g_ptr_array_index (snaps, i);
+        if (s == snap)
             return i;
     }
 
@@ -36,26 +51,31 @@ snap_index (GPtrArray *snaps, const gchar *value)
 }
 
 static gint
-compare_snap_names (gchar **a, gchar **b)
+compare_snap_names (SnapdSnap **a, SnapdSnap **b)
 {
-    return g_strcmp0 (*a, *b);
+    return g_strcmp0 (snapd_snap_get_name (*a), snapd_snap_get_name (*b));
 }
 
 static GPtrArray *
-get_snaps (GPtrArray *plugs, GPtrArray *slots)
+get_configurable_snaps (GPtrArray *snaps, GPtrArray *plugs)
 {
-    GPtrArray *snaps;
+    GPtrArray *configurable_snaps;
     guint i;
 
-    snaps = g_ptr_array_new_with_free_func (g_free);
+    configurable_snaps = g_ptr_array_new_with_free_func (g_free);
     for (i = 0; i < plugs->len; i++) {
         SnapdPlug *plug = g_ptr_array_index (plugs, i);
-        if (snap_index (snaps, snapd_plug_get_snap (plug)) == -1)
-            g_ptr_array_add (snaps, g_strdup (snapd_plug_get_snap (plug)));
+        SnapdSnap *snap;
+
+        snap = find_snap (snaps, snapd_plug_get_snap (plug));
+        if (snap == NULL)
+            continue;
+        if (snap_index (configurable_snaps, snap) == -1)
+            g_ptr_array_add (configurable_snaps, g_object_ref (snap));
     }
     g_ptr_array_sort (snaps, (GCompareFunc) compare_snap_names);
 
-    return snaps;
+    return configurable_snaps;
 }
 
 static SnapdSlot *
@@ -102,9 +122,9 @@ static void
 snap_changed_cb (GtkWidget *combo)
 {
     guint i, row = 0;
-    const gchar *snap;
+    SnapdSnap *snap;
 
-    snap = gtk_combo_box_text_get_active_text (GTK_COMBO_BOX_TEXT (combo));
+    snap = snap_combo_box_get_snap (SNAP_COMBO_BOX (combo));
 
     gtk_container_foreach (GTK_CONTAINER (grid), (GtkCallback) gtk_widget_destroy, NULL);
 
@@ -114,7 +134,7 @@ snap_changed_cb (GtkWidget *combo)
         const gchar *plug_label;
         GtkWidget *label;
 
-        if (g_strcmp0 (snapd_plug_get_snap (plug), snap) != 0)
+        if (g_strcmp0 (snapd_plug_get_snap (plug), snapd_snap_get_name (snap)) != 0)
             continue;
 
         plug_label = snapd_plug_get_label (plug);
@@ -164,32 +184,14 @@ snap_changed_cb (GtkWidget *combo)
     }
 }
 
-static void
-set_active (GtkWidget *combo, const gchar *value)
-{
-    GtkTreeModel *model;
-    GtkTreeIter iter;
-
-    model = gtk_combo_box_get_model (GTK_COMBO_BOX (combo));
-    if (!gtk_tree_model_get_iter_first (model, &iter))
-        return;
-    do
-    {
-        const gchar *v;
-        gtk_tree_model_get (model, &iter, 0, &v, -1);
-        if (g_strcmp0 (v, value) == 0) {
-            gtk_combo_box_set_active_iter (GTK_COMBO_BOX (combo), &iter);
-            return;
-        }
-    } while (gtk_tree_model_iter_next (model, &iter));
-}
-
 int
 main (int argc, char **argv)
 {
-    GtkWidget *window, *box, *combo;
+    GtkWidget *window, *box;
+    SnapComboBox *combo;
     g_autoptr(GPtrArray) snaps = NULL;
-    guint i;
+    g_autoptr(GPtrArray) configurable_snaps = NULL;
+    SnapdSnap *selected_snap = NULL;
     g_autoptr(GError) error = NULL;
 
     gtk_init (&argc, &argv);
@@ -204,6 +206,11 @@ main (int argc, char **argv)
         g_warning ("Failed to get interfaces: %s\n", error->message);
         return 1;
     }
+    snaps = snapd_client_list_sync (client, NULL, &error);
+    if (snaps == NULL) {
+        g_warning ("Failed to get installed snaps: %s\n", error->message);
+        return 1;
+    }
 
     window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
     gtk_container_set_border_width (GTK_CONTAINER (window), 20);
@@ -213,15 +220,11 @@ main (int argc, char **argv)
     gtk_widget_show (box);
     gtk_container_add (GTK_CONTAINER (window), box);
 
-    combo = gtk_combo_box_text_new ();
-    snaps = get_snaps (plugs, slots);
-    for (i = 0; i < snaps->len; i++) {
-        const gchar *snap = g_ptr_array_index (snaps, i);
-        gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (combo), snap);
-    }
+    configurable_snaps = get_configurable_snaps (snaps, plugs);
+    combo = snap_combo_box_new (configurable_snaps);
     g_signal_connect (combo, "changed", G_CALLBACK (snap_changed_cb), NULL);
-    gtk_widget_show (combo);
-    gtk_box_pack_start (GTK_BOX (box), combo, FALSE, TRUE, 0);
+    gtk_widget_show (GTK_WIDGET (combo));
+    gtk_box_pack_start (GTK_BOX (box), GTK_WIDGET (combo), FALSE, TRUE, 0);
 
     grid = gtk_grid_new ();
     gtk_grid_set_row_spacing (GTK_GRID (grid), 10);
@@ -230,9 +233,10 @@ main (int argc, char **argv)
     gtk_box_pack_start (GTK_BOX (box), grid, TRUE, TRUE, 0);
 
     if (argc > 1)
-        set_active (combo, argv[1]);
-    else
-        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
+        selected_snap = find_snap (snaps, argv[1]);
+    else if (configurable_snaps->len > 0)
+        selected_snap = g_ptr_array_index (configurable_snaps, 0);
+    snap_combo_box_set_snap (combo, selected_snap);
 
     gtk_main ();
     return 0;

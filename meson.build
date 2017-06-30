@@ -16,6 +16,8 @@ snapd_glib_dep = dependency ('snapd-glib')
 
 snap_interface_editor = executable ('snap-interface-editor',
                                     [ 'snap-interface-editor.c',
+                                      'snap-combo-box.c',
+                                      'snap-combo-box.h',
                                       'snap-interface-combo-box.c',
                                       'snap-interface-combo-box.h',
                                       'snap-interface-switch.c',
